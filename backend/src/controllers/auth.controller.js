@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const { pool } = require("../config/db");
 const { encrypt, decrypt } = require("../utils/crypto");
 const { signToken } = require("../utils/jwt");
+const { DEFAULT_CATEGORIES } = require("../utils/defaultCategories");
 
 const BCRYPT_ROUNDS = 12; // "cost factor" — each +1 roughly doubles the hashing time.
 // 12 is a common default in 2026: slow enough that brute-forcing leaked hashes is
@@ -39,14 +40,44 @@ async function signup(req, res, next) {
     // phoneNumber is optional. Only encrypt/store it if the user actually gave one.
     const phoneNumberEncrypted = phoneNumber ? encrypt(phoneNumber) : null;
 
-    const result = await pool.query(
-      `INSERT INTO users (email, password_hash, full_name, phone_number_encrypted)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, email, full_name, created_at`,
-      [email, passwordHash, fullName, phoneNumberEncrypted]
-    );
+    // Creating the user and seeding their starter categories has to be
+    // all-or-nothing: if the category inserts failed after the user was already
+    // committed, you'd end up with a real account and no way to categorize
+    // anything. `pool.query` alone can't do that — it grabs a connection, runs
+    // one statement, and gives the connection back, so nothing ties multiple
+    // statements together. A transaction (BEGIN ... COMMIT/ROLLBACK) needs a
+    // single dedicated connection held for its whole duration, which is what
+    // `pool.connect()` checks out here.
+    const client = await pool.connect();
+    let user;
+    try {
+      await client.query("BEGIN");
 
-    const user = result.rows[0];
+      const userResult = await client.query(
+        `INSERT INTO users (email, password_hash, full_name, phone_number_encrypted)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, email, full_name, created_at`,
+        [email, passwordHash, fullName, phoneNumberEncrypted]
+      );
+      user = userResult.rows[0];
+
+      for (const category of DEFAULT_CATEGORIES) {
+        await client.query(
+          "INSERT INTO categories (user_id, name, type) VALUES ($1, $2, $3)",
+          [user.id, category.name, category.type]
+        );
+      }
+
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      // Always give the connection back to the pool, whether we committed,
+      // rolled back, or something else threw along the way.
+      client.release();
+    }
+
     const token = signToken(user);
 
     res.status(201).json({ token, user: toPublicUser(user) });

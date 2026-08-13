@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import NavAuth from "./nav-auth";
 
 export const metadata: Metadata = {
   title: "walletapp",
@@ -12,6 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <nav>
           <a href="/">walletapp</a>
+          <NavAuth />
         </nav>
         {children}
       </body>

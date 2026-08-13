@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { login } from "@/lib/api";
 
 export default function LoginPage() {
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -18,10 +20,9 @@ export default function LoginPage() {
     try {
       const data = await login({ email, password });
       localStorage.setItem("walletapp_token", data.token);
-      setToken(data.token);
+      router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
       setLoading(false);
     }
   }
@@ -56,12 +57,6 @@ export default function LoginPage() {
       </form>
 
       {error && <p className="error">{error}</p>}
-      {token && (
-        <p className="success">
-          Logged in! JWT received and saved: <br />
-          {token}
-        </p>
-      )}
 
       <p>
         Don&apos;t have an account? <a href="/signup">Sign up</a>

@@ -8,6 +8,9 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 
 const authRoutes = require("./routes/auth.routes");
+const categoriesRoutes = require("./routes/categories.routes");
+const transactionsRoutes = require("./routes/transactions.routes");
+const budgetsRoutes = require("./routes/budgets.routes");
 
 const app = express();
 
@@ -44,6 +47,9 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/categories", categoriesRoutes);
+app.use("/api/transactions", transactionsRoutes);
+app.use("/api/budgets", budgetsRoutes);
 
 // Catch-all for routes that don't exist.
 app.use((req, res) => {

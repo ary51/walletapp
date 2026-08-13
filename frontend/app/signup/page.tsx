@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { signup } from "@/lib/api";
 
 export default function SignupPage() {
+  const router = useRouter();
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -18,18 +20,20 @@ export default function SignupPage() {
 
     try {
       const data = await signup({ email, password, fullName });
-      // localStorage is the simplest place to keep the JWT for a Phase 1 demo.
-      // A production app would more likely use an httpOnly cookie instead, since
-      // JS running on the page (including any injected via an XSS bug) can read
-      // localStorage but can't read an httpOnly cookie. That's a Phase-2+ hardening
-      // step, not something we need to block Phase 1 on.
+      // localStorage is the simplest place to keep the JWT for now. A
+      // production app would more likely use an httpOnly cookie instead,
+      // since JS running on the page (including any injected via an XSS bug)
+      // can read localStorage but can't read an httpOnly cookie. That's a
+      // hardening step for later, not something blocking this phase.
       localStorage.setItem("walletapp_token", data.token);
-      setToken(data.token);
+      router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
       setLoading(false);
     }
+    // No `finally` resetting loading: on success we're navigating away, so
+    // leaving the button disabled/"Creating account..." until the new page
+    // takes over reads better than it flashing back before the redirect.
   }
 
   return (
@@ -72,12 +76,6 @@ export default function SignupPage() {
       </form>
 
       {error && <p className="error">{error}</p>}
-      {token && (
-        <p className="success">
-          Account created! JWT received and saved: <br />
-          {token}
-        </p>
-      )}
 
       <p>
         Already have an account? <a href="/login">Log in</a>

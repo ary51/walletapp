@@ -32,7 +32,7 @@ async function list(req, res, next) {
     }
 
     const result = await pool.query(
-      `SELECT id, category_id, amount, type, description, transaction_date, created_at
+      `SELECT id, category_id, amount, type, description, transaction_date, created_at, source
        FROM transactions
        WHERE ${conditions.join(" AND ")}
        ORDER BY transaction_date DESC, created_at DESC`,
@@ -56,7 +56,7 @@ async function create(req, res, next) {
     const result = await pool.query(
       `INSERT INTO transactions (user_id, category_id, amount, type, description, transaction_date)
        VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, category_id, amount, type, description, transaction_date, created_at`,
+       RETURNING id, category_id, amount, type, description, transaction_date, created_at, source`,
       [req.userId, categoryId ?? null, amount, type, description ?? null, transactionDate]
     );
 
@@ -89,7 +89,7 @@ async function update(req, res, next) {
            category_id = COALESCE($5, category_id),
            updated_at = now()
        WHERE id = $6 AND user_id = $7
-       RETURNING id, category_id, amount, type, description, transaction_date, created_at`,
+       RETURNING id, category_id, amount, type, description, transaction_date, created_at, source`,
       [amount ?? null, type ?? null, description ?? null, transactionDate ?? null, categoryId ?? null, req.params.id, req.userId]
     );
 

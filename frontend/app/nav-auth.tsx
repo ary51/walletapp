@@ -31,6 +31,7 @@ export default function NavAuth() {
   return (
     <>
       <a href="/dashboard">Dashboard</a>
+      <a href="/reports">Reports</a>
       <span className="spacer" />
       <button type="button" className="link" onClick={handleLogout}>
         Log out

@@ -213,6 +213,11 @@ main.dashboard {
   color: #1a7f37;
 }
 
+.badge.bank {
+  background: #eaf1ff;
+  color: #2f6feb;
+}
+
 .badge.expense {
   background: #fdecea;
   color: #c0362c;

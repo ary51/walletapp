@@ -5,17 +5,22 @@ import { useRouter } from "next/navigation";
 import {
   Budget,
   Category,
+  PlaidItem,
   Transaction,
   createBudget,
   createCategory,
   createTransaction,
   deleteBudget,
   deleteCategory,
+  deletePlaidItem,
   deleteTransaction,
   getBudgets,
   getCategories,
+  getPlaidItems,
   getTransactions,
+  syncPlaidTransactions,
 } from "@/lib/api";
+import PlaidConnectButton from "./plaid-connect-button";
 
 function currentMonthValue() {
   return new Date().toISOString().slice(0, 7); // "YYYY-MM", what <input type="month"> uses
@@ -28,6 +33,8 @@ export default function DashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [budgetMonth, setBudgetMonth] = useState(currentMonthValue);
+  const [plaidItems, setPlaidItems] = useState<PlaidItem[]>([]);
+  const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,14 +55,16 @@ export default function DashboardPage() {
 
   async function loadData(month: string) {
     try {
-      const [categoriesRes, transactionsRes, budgetsRes] = await Promise.all([
+      const [categoriesRes, transactionsRes, budgetsRes, plaidItemsRes] = await Promise.all([
         getCategories(),
         getTransactions(),
         getBudgets(month),
+        getPlaidItems(),
       ]);
       setCategories(categoriesRes.categories);
       setTransactions(transactionsRes.transactions);
       setBudgets(budgetsRes.budgets);
+      setPlaidItems(plaidItemsRes.items);
     } catch (err) {
       // A 401 here means the token is missing/expired — bounce back to login
       // rather than showing an empty dashboard forever.
@@ -155,6 +164,29 @@ export default function DashboardPage() {
       await loadData(budgetMonth);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete budget");
+    }
+  }
+
+  async function handleUnlinkItem(id: number) {
+    setError(null);
+    try {
+      await deletePlaidItem(id);
+      await loadData(budgetMonth);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to unlink account");
+    }
+  }
+
+  async function handleSyncNow() {
+    setError(null);
+    setSyncing(true);
+    try {
+      await syncPlaidTransactions();
+      await loadData(budgetMonth);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to sync transactions");
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -278,7 +310,10 @@ export default function DashboardPage() {
                 {transactions.map((t) => (
                   <tr key={t.id}>
                     <td>{t.transaction_date.slice(0, 10)}</td>
-                    <td>{t.description || "—"}</td>
+                    <td>
+                      {t.description || "—"}{" "}
+                      {t.source === "plaid" && <span className="badge bank">bank</span>}
+                    </td>
                     <td>{categoryName_(t.category_id)}</td>
                     <td className="amount" style={{ color: t.type === "income" ? "#1a7f37" : "#c0362c" }}>
                       {t.type === "income" ? "+" : "−"}${Number(t.amount).toFixed(2)}
@@ -363,6 +398,41 @@ export default function DashboardPage() {
                 </li>
               );
             })}
+          </ul>
+        )}
+      </div>
+
+      <div className="panel">
+        <div className="budgets-header">
+          <h2>Linked Bank Accounts</h2>
+          {plaidItems.length > 0 && (
+            <button type="button" onClick={handleSyncNow} disabled={syncing}>
+              {syncing ? "Syncing…" : "Sync now"}
+            </button>
+          )}
+        </div>
+
+        <p className="empty" style={{ marginTop: 0 }}>
+          Sandbox mode — connect a fake bank with fake data. Pick any institution, then use username{" "}
+          <code>user_good</code> and password <code>pass_good</code> when Plaid asks.
+        </p>
+
+        <PlaidConnectButton onConnected={() => loadData(budgetMonth)} />
+
+        {plaidItems.length > 0 && (
+          <ul className="row-list" style={{ marginTop: 16 }}>
+            {plaidItems.map((item) => (
+              <li key={item.id}>
+                <span>
+                  {item.institution_name || "Connected bank"}
+                  {" — "}
+                  {item.accounts.map((a) => `${a.name}${a.mask ? ` ••${a.mask}` : ""}`).join(", ")}
+                </span>
+                <button type="button" className="icon-button" onClick={() => handleUnlinkItem(item.id)}>
+                  Unlink
+                </button>
+              </li>
+            ))}
           </ul>
         )}
       </div>

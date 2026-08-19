@@ -28,6 +28,16 @@ export type Transaction = {
   description: string | null;
   transaction_date: string;
   created_at: string;
+  source: "manual" | "plaid";
+};
+
+export type PlaidAccountSummary = { name: string; mask: string | null; subtype: string | null };
+
+export type PlaidItem = {
+  id: number;
+  institution_name: string | null;
+  created_at: string;
+  accounts: PlaidAccountSummary[];
 };
 
 export type Budget = {
@@ -38,6 +48,10 @@ export type Budget = {
   amount: string; // NUMERIC, same string-not-number reasoning as Transaction.amount above
   spent: string;
 };
+
+export type CategorySpending = { category_id: number; category_name: string; total: string };
+
+export type MonthlyTrendPoint = { month: string; income: string; expense: string };
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null; // guards against server-side rendering, where there's no browser/localStorage at all
@@ -124,4 +138,37 @@ export function updateBudget(id: number, input: { amount: number }) {
 
 export function deleteBudget(id: number) {
   return request<void>(`/api/budgets/${id}`, { method: "DELETE" });
+}
+
+export function createPlaidLinkToken() {
+  return request<{ linkToken: string }>("/api/plaid/link-token", { method: "POST" });
+}
+
+export function exchangePlaidPublicToken(publicToken: string) {
+  return request<{ plaidItemId: number; institutionName: string | null }>("/api/plaid/exchange-token", {
+    method: "POST",
+    body: { publicToken },
+  });
+}
+
+export function syncPlaidTransactions() {
+  return request<{ synced: number; imported: number }>("/api/plaid/sync", { method: "POST" });
+}
+
+export function getPlaidItems() {
+  return request<{ items: PlaidItem[] }>("/api/plaid/items");
+}
+
+export function deletePlaidItem(id: number) {
+  return request<void>(`/api/plaid/items/${id}`, { method: "DELETE" });
+}
+
+export function getSpendingByCategory(month: string) {
+  return request<{ month: string; categories: CategorySpending[] }>(
+    `/api/reports/spending-by-category?month=${month}`
+  );
+}
+
+export function getMonthlyTrend(months: number) {
+  return request<{ trend: MonthlyTrendPoint[] }>(`/api/reports/monthly-trend?months=${months}`);
 }

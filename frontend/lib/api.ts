@@ -53,6 +53,22 @@ export type CategorySpending = { category_id: number; category_name: string; tot
 
 export type MonthlyTrendPoint = { month: string; income: string; expense: string };
 
+export type BudgetRecommendation = {
+  categoryName: string;
+  categoryId: number | null;
+  recommendedAmount: number;
+  reasoning: string;
+};
+
+export type Anomaly = {
+  id: number;
+  description: string | null;
+  amount: string;
+  categoryName: string;
+  transactionDate: string;
+  reason: string;
+};
+
 function getToken(): string | null {
   if (typeof window === "undefined") return null; // guards against server-side rendering, where there's no browser/localStorage at all
   return localStorage.getItem("walletapp_token");
@@ -171,4 +187,20 @@ export function getSpendingByCategory(month: string) {
 
 export function getMonthlyTrend(months: number) {
   return request<{ trend: MonthlyTrendPoint[] }>(`/api/reports/monthly-trend?months=${months}`);
+}
+
+export function getSpendingSummary(month: string) {
+  return request<{ summary: string }>(`/api/insights/summary?month=${month}`);
+}
+
+export function getBudgetRecommendations() {
+  return request<{ recommendations: BudgetRecommendation[] }>("/api/insights/budget-recommendations");
+}
+
+export function getAnomalies(month: string) {
+  return request<{ month: string; anomalies: Anomaly[] }>(`/api/insights/anomalies?month=${month}`);
+}
+
+export function explainTransaction(id: number) {
+  return request<{ explanation: string }>(`/api/insights/explain/${id}`, { method: "POST" });
 }

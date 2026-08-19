@@ -13,6 +13,7 @@ const transactionsRoutes = require("./routes/transactions.routes");
 const budgetsRoutes = require("./routes/budgets.routes");
 const plaidRoutes = require("./routes/plaid.routes");
 const reportsRoutes = require("./routes/reports.routes");
+const insightsRoutes = require("./routes/insights.routes");
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use("/api/transactions", transactionsRoutes);
 app.use("/api/budgets", budgetsRoutes);
 app.use("/api/plaid", plaidRoutes);
 app.use("/api/reports", reportsRoutes);
+app.use("/api/insights", insightsRoutes);
 
 // Catch-all for routes that don't exist.
 app.use((req, res) => {
